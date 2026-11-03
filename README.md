@@ -51,3 +51,12 @@ npm run dev
 
 ## 注意
 圖表僅於模型實際訓練成功後呈現。報告請將網站真實執行結果、圖表截圖、AI 協作紀錄另行整理。
+
+## V2 更新（2026-11-03）
+- 新增 `vercel.json`，將 `/api/:path*` rewrite 到 `/api/index`（請以線上 `/api/health` 與 `/api/default` 驗證）。
+- 新增 Baseline 五折交叉驗證 RMSE，以及兩種特徵選擇方法的最低 CV RMSE 設定。
+- 網站新增研究問題結論摘要、CV 比較 CSV 與圖表 PNG 匯出。
+- `report_assets/` 包含實際資料運算的四張圖，`results.json` 為本地重現的分析結果。
+- 報告 Word 位於壓縮檔根目錄 `Regression_Lab_CRISP_DM_Report.docx`。
+- 報告使用預設 Ames Housing 所有數值型候選特徵（排除 Id / SalePrice），選擇 SelectKBest 20 特徵；網站手動勾選不同欄位可能產生不同結果。
+- Python 單元測試通過；由於此環境無法完成 npm 套件安裝，Next.js build 尚未驗證，請先在本機 `npm install && npm run build` 再推送部署。
