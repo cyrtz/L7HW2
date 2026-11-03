@@ -22,9 +22,7 @@ def read_csv(raw: bytes):
 
 def profile(df):
     nums=[c for c in df.select_dtypes(include='number').columns if df[c].notna().sum()>50 and df[c].nunique(dropna=True)>3]
-    head=df.head(8)
-    # astype(object) first: a float64 column coerces None back to NaN, which is not valid JSON.
-    return {'rows':len(df),'columns':len(df.columns),'numericColumns':nums,'columnInfo':[{'name':str(c),'type':str(df[c].dtype),'missing':int(df[c].isna().sum())} for c in df.columns], 'preview':head.astype(object).where(pd.notnull(head),None).to_dict('records')}
+    return {'rows':len(df),'columns':len(df.columns),'numericColumns':nums,'columnInfo':[{'name':str(c),'type':str(df[c].dtype),'missing':int(df[c].isna().sum())} for c in df.columns], 'preview':df.head(8).where(pd.notnull(df.head(8)),None).to_dict('records')}
 
 def calculate(df,target,features,k=20,method='kbest',seed=42):
     if target not in df or target in features: raise ValueError('目標欄位設定不正確')
@@ -56,6 +54,8 @@ def calculate(df,target,features,k=20,method='kbest',seed=42):
             model=make_model(n,m)
             scores=-cross_val_score(model,X_train,y_train,cv=cv,scoring='neg_root_mean_squared_error',n_jobs=1)
             comparisons.append({'method':m,'features':n,'cvRmse':round(float(scores.mean()),3),'cvStd':round(float(scores.std()),3)})
+    baseline_cv=-cross_val_score(Pipeline([('impute',SimpleImputer(strategy='median',keep_empty_features=True)),('model',LinearRegression())]),X_train,y_train,cv=cv,scoring='neg_root_mean_squared_error',n_jobs=1)
+    best_cv=min(comparisons,key=lambda x:x['cvRmse'])
     # User-selected configuration is evaluated on holdout; CV chart supports exploration.
     model=make_model(k,method)
     model.fit(X_train,y_train)
@@ -74,4 +74,4 @@ def calculate(df,target,features,k=20,method='kbest',seed=42):
     baseline=Pipeline([('impute',SimpleImputer(strategy='median',keep_empty_features=True)),('model',LinearRegression())])
     baseline.fit(X_train,y_train)
     baseline_pred=baseline.predict(X_test)
-    return {'metrics':results,'baseline':{'mae':float(mean_absolute_error(actual,baseline_pred)),'rmse':float(np.sqrt(mean_squared_error(actual,baseline_pred))),'r2':float(r2_score(actual,baseline_pred))},'selected':selected,'coefficients':[{'feature':f,'coefficient':float(c)} for f,c in zip(selected,coefficients)],'comparisons':comparisons,'points':points,'split':{'train':len(X_train),'calibration':len(X_cal),'test':len(X_test)},'intervalMethod':'Split conformal absolute residual, finite-sample quantile (95% nominal)','note':'Test set is for final assessment; choose method and feature count using training cross-validation, not test results.'}
+    return {'metrics':results,'baseline':{'mae':float(mean_absolute_error(actual,baseline_pred)),'rmse':float(np.sqrt(mean_squared_error(actual,baseline_pred))),'r2':float(r2_score(actual,baseline_pred))},'selected':selected,'coefficients':[{'feature':f,'coefficient':float(c)} for f,c in zip(selected,coefficients)],'comparisons':comparisons,'baselineCv':{'cvRmse':float(baseline_cv.mean()),'cvStd':float(baseline_cv.std())},'bestCv':best_cv,'points':points,'split':{'train':len(X_train),'calibration':len(X_cal),'test':len(X_test)},'intervalMethod':'Split conformal absolute residual, finite-sample quantile (95% nominal)','note':'Test set is for final assessment; choose method and feature count using training cross-validation, not test results.'}
